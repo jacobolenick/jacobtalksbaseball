@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import { baseballClip } from "./channels"
-import { channelEntries, datedUploads, mergeUploads, newsFromRss, postedWithin, uploadsFromChannel, videosFromAtom } from "./feed"
+import { channelEntries, dateFromEtag, datedUploads, mergeUploads, newsFromRss, postedWithin, uploadsFromChannel, videosFromAtom } from "./feed"
 import { handleApi } from "./server/api"
 
 const news = `
@@ -115,6 +115,12 @@ test("site pages are not feed routes", async () => {
   assert.equal(await handleApi("/"), null)
   const empty = await handleApi("/api/highlight?q=")
   assert.equal(empty?.status, 400)
+})
+
+test("thumbnail stamps become publish dates", () => {
+  const now = Date.parse("2026-10-29T23:00:00Z")
+  assert.equal(dateFromEtag('"1793293743"', now), "2026-10-29T17:09:03.000Z")
+  assert.equal(dateFromEtag("0", now), null)
 })
 
 test("shorts keep the last three days", () => {

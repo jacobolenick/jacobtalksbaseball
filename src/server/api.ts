@@ -1,6 +1,6 @@
 import { allowedArticleUrl, briefFromHtml, sourceName } from "../brief"
 import { VIDEO_CHANNELS } from "../channels"
-import { atomFromEntries, channelEntries, datedUploads, mergeUploads, postedWithin, uploadsFromChannel } from "../feed"
+import { atomFromEntries, channelEntries, dateFromEtag, datedUploads, mergeUploads, postedWithin, uploadsFromChannel } from "../feed"
 import { videosFromYouTube } from "../scores"
 
 export type ApiResult = {
@@ -39,23 +39,23 @@ async function publishDates(ids: string[]): Promise<Map<string, string>> {
     while (queue.length) {
       const id = queue.shift()
       if (!id) return
-      try {
-        const response = await fetch("https://www.youtube.com/youtubei/v1/player?prettyPrint=false", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "User-Agent": UA },
-          body: JSON.stringify({ context: { client: youtubeClient }, videoId: id }),
-          signal: AbortSignal.timeout(5000),
-        })
-        if (!response.ok) continue
-        const data = (await response.json()) as { microformat?: { playerMicroformatRenderer?: { publishDate?: string } } }
-        const published = data.microformat?.playerMicroformatRenderer?.publishDate
-        if (published) dates.set(id, published)
-      } catch {
-        continue
+      for (const file of ["frame0.jpg", "hqdefault.jpg"]) {
+        try {
+          const response = await fetch(`https://i.ytimg.com/vi/${id}/${file}`, {
+            method: "HEAD",
+            signal: AbortSignal.timeout(4000),
+          })
+          const published = dateFromEtag(response.headers.get("etag"))
+          if (!published) continue
+          dates.set(id, published)
+          break
+        } catch {
+          continue
+        }
       }
     }
   }
-  await Promise.all(Array.from({ length: Math.min(16, ids.length) }, worker))
+  await Promise.all(Array.from({ length: Math.min(20, ids.length) }, worker))
   return dates
 }
 
@@ -91,7 +91,6 @@ async function youtubeFeed(kind: "video" | "short"): Promise<string | null> {
   if (kind === "short") {
     const ids = [...new Set(groups.flat().map((entry) => entry.id))]
     const dates = await publishDates(ids)
-    if (ids.length && dates.size === 0) return null
     lists = groups.map((group) => postedWithin(datedUploads(group, dates), 3, now))
   }
   const xml = atomFromEntries(mergeUploads(lists))

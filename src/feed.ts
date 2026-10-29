@@ -195,11 +195,19 @@ export function datedUploads(entries: ChannelEntry[], dates: ReadonlyMap<string,
   })
 }
 
+export function dateFromEtag(etag: string | null, now = Date.now()): string | null {
+  const seconds = Number((etag ?? "").replace(/"/g, ""))
+  if (!Number.isFinite(seconds) || seconds < 1_577_836_800) return null
+  const stamp = seconds * 1000
+  if (stamp > now + 86_400_000) return null
+  return new Date(stamp).toISOString()
+}
+
 export function postedWithin(entries: ChannelEntry[], days: number, now = Date.now()): ChannelEntry[] {
   const windowMs = days * 24 * 60 * 60 * 1000
   return entries.filter((entry) => {
     const stamp = Date.parse(entry.published)
-    return Number.isFinite(stamp) && stamp <= now && now - stamp <= windowMs
+    return Number.isFinite(stamp) && stamp <= now + 86_400_000 && now - stamp <= windowMs
   })
 }
 
@@ -264,7 +272,7 @@ export async function loadFeed(signal: AbortSignal): Promise<FeedItem[]> {
   const cutoff = Date.now() - 3 * 24 * 60 * 60 * 1000
   const shorts =
     results[2].status === "fulfilled"
-      ? videosFromAtom(results[2].value, "short").filter((item) => item.stamp >= cutoff && item.stamp <= Date.now())
+      ? videosFromAtom(results[2].value, "short").filter((item) => item.stamp >= cutoff && item.stamp <= Date.now() + 86_400_000)
       : []
   if (!news.length && !videos.length && !shorts.length) throw new Error("The feed didn’t load.")
   return [...news, ...videos, ...shorts].sort((a, b) => b.stamp - a.stamp)
