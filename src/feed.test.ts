@@ -2,6 +2,7 @@ import assert from "node:assert/strict"
 import test from "node:test"
 import { baseballClip } from "./channels"
 import { channelEntries, datedUploads, mergeUploads, newsFromRss, postedWithin, uploadsFromChannel, videosFromAtom } from "./feed"
+import { handleApi } from "./server/api"
 
 const news = `
 <item>
@@ -108,6 +109,12 @@ test("espn clips stay on baseball and club uploads keep their name", () => {
   ])
   assert.deepEqual(merged.map((entry) => entry.id), ["b", "a"])
   assert.equal(merged[1]?.author, "MLB")
+})
+
+test("site pages are not feed routes", async () => {
+  assert.equal(await handleApi("/"), null)
+  const empty = await handleApi("/api/highlight?q=")
+  assert.equal(empty?.status, 400)
 })
 
 test("shorts keep the last three days", () => {
