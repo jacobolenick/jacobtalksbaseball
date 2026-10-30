@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react"
+import trophy from "./assets/trophy.png"
 import { teamLogo } from "./teams"
 
 const BREWERS = 158
@@ -72,6 +73,7 @@ export function ChampionToast({ onDone }: { onDone: () => void }) {
       <canvas ref={canvasRef} className="confetti" aria-hidden="true" />
       <div className="toast" role="status">
         <img src={teamLogo(BREWERS)} alt="" width={48} height={48} />
+        <img className="trophy" src={trophy} alt="Commissioner's Trophy" />
         <p>Congratulations to the Brewers! First time World Series Champions.</p>
       </div>
     </>

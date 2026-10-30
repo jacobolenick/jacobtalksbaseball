@@ -641,7 +641,7 @@ footer {
   display: flex;
   align-items: center;
   gap: 12px;
-  width: min(440px, calc(100% - 32px));
+  width: min(560px, calc(100% - 32px));
   padding: 14px 16px;
   border-radius: 22px;
   background: white;
@@ -650,6 +650,12 @@ footer {
 }
 
 .toast img { flex: none; }
+
+.trophy {
+  flex: none;
+  width: auto;
+  height: 72px;
+}
 
 .toast p {
   margin: 0;
