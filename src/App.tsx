@@ -5,6 +5,7 @@ import { headshot, teamLogo } from "./teams"
 import logo from "./assets/logo.png"
 import { ChampionToast } from "./ChampionToast"
 import { FeedView } from "./FeedView"
+import { ProfileButton, ProfileSheet } from "./Creator"
 import { ScoresView } from "./ScoresView"
 import { Sheet, type SheetRequest } from "./Sheet"
 import { TeamFilter } from "./TeamFilter"
@@ -285,6 +286,7 @@ export default function App() {
   const [sheet, setSheet] = useState<SheetRequest | null>(null)
   const [tab, setTab] = useState<"moves" | "feed" | "scores">("moves")
   const [champions, setChampions] = useState(0)
+  const [profileOpen, setProfileOpen] = useState(false)
   const movesRef = useRef<Move[] | null>(null)
   const abortRef = useRef<AbortController | null>(null)
   const today = todayISO()
@@ -464,7 +466,8 @@ export default function App() {
           </>
         )}
       </main>
-      <nav className="dock" aria-label="Sections">
+      <div className="dock-row">
+        <nav className="dock" aria-label="Sections">
         <button type="button" aria-pressed={tab === "moves"} onClick={() => setTab("moves")}>
           <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
             <path d="M2 4.5h12M2 8h12M2 11.5h8" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
@@ -500,8 +503,11 @@ export default function App() {
           </svg>
           Scores
         </button>
-      </nav>
+        </nav>
+        <ProfileButton onOpen={() => setProfileOpen(true)} />
+      </div>
       {champions > 0 ? <ChampionToast key={champions} onDone={() => setChampions(0)} /> : null}
+      {profileOpen ? <ProfileSheet onClose={() => setProfileOpen(false)} /> : null}
       {sheet ? (
         <Sheet
           request={sheet}
