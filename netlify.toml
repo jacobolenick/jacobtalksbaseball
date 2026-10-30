@@ -11,3 +11,54 @@
 
 [functions.api]
   timeout = 10
+
+# These pages are the app. /api stays on the function because this list does not include it.
+[[redirects]]
+  from = "/mlbmoves"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/mlbmoves/"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/newsfeed"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/newsfeed/"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/scores"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/scores/"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/teams"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/teams/"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/jacob"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/jacob/"
+  to = "/index.html"
+  status = 200

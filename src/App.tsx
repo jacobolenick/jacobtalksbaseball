@@ -8,6 +8,7 @@ import { FeedView } from "./FeedView"
 import { ProfileButton, ProfilePage } from "./Creator"
 import { ScoresView } from "./ScoresView"
 import { TeamsView } from "./TeamsView"
+import { pathForTab, tabFromPath, type PageTab } from "./paths"
 import { Sheet, type SheetRequest } from "./Sheet"
 import { TeamFilter } from "./TeamFilter"
 import type { FilterId, Move } from "./types"
@@ -285,7 +286,7 @@ export default function App() {
   const [openId, setOpenId] = useState<string | null>(null)
   const [pulseId, setPulseId] = useState<string | null>(null)
   const [sheet, setSheet] = useState<SheetRequest | null>(null)
-  const [tab, setTab] = useState<"moves" | "feed" | "scores" | "teams" | "profile">("moves")
+  const [tab, setTab] = useState<PageTab>(() => tabFromPath(window.location.pathname))
   const [champions, setChampions] = useState(0)
   const movesRef = useRef<Move[] | null>(null)
   const abortRef = useRef<AbortController | null>(null)
@@ -350,6 +351,35 @@ export default function App() {
     else last.moves.push(move)
   }
 
+  useEffect(() => {
+    const next = tabFromPath(window.location.pathname)
+    const path = pathForTab(next)
+    if (window.location.pathname !== path) history.replaceState({ tab: next }, "", path)
+    if (next === "scores") setChampions((value) => value + 1)
+    const onPop = () => {
+      const page = tabFromPath(window.location.pathname)
+      setTab(page)
+      if (page === "scores") setChampions((value) => value + 1)
+      window.scrollTo({ top: 0, behavior: scrollBehavior() })
+    }
+    window.addEventListener("popstate", onPop)
+    return () => window.removeEventListener("popstate", onPop)
+  }, [])
+
+  function visit(next: PageTab) {
+    const path = pathForTab(next)
+    if (window.location.pathname !== path) history.pushState({ tab: next }, "", path)
+    setTab(next)
+  }
+
+  function selectTab(next: PageTab, event: { metaKey: boolean; ctrlKey: boolean; shiftKey: boolean; altKey: boolean; button: number; preventDefault: () => void }) {
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return
+    event.preventDefault()
+    visit(next)
+    if (next === "scores") setChampions((value) => value + 1)
+    if (next !== "moves") window.scrollTo({ top: 0, behavior: scrollBehavior() })
+  }
+
   function home() {
     setFilter("all")
     window.scrollTo({ top: 0, behavior: scrollBehavior() })
@@ -358,7 +388,7 @@ export default function App() {
   const closeSheet = useCallback(() => setSheet(null), [])
 
   function openMove(id: string) {
-    setTab("moves")
+    visit("moves")
     setOpenId(id)
     setPulseId(id)
     requestAnimationFrame(() => {
@@ -472,61 +502,39 @@ export default function App() {
       </main>
       <div className="dock-row">
         <nav className="dock" aria-label="Sections">
-        <button type="button" aria-pressed={tab === "moves"} onClick={() => setTab("moves")}>
+        <a href="/mlbmoves" aria-current={tab === "moves" ? "page" : undefined} onClick={(event) => selectTab("moves", event)}>
           <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
             <path d="M2 4.5h12M2 8h12M2 11.5h8" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
           </svg>
           Moves
-        </button>
-        <button
-          type="button"
-          aria-pressed={tab === "feed"}
-          onClick={() => {
-            setTab("feed")
-            window.scrollTo({ top: 0, behavior: scrollBehavior() })
-          }}
-        >
+        </a>
+        <a href="/newsfeed" aria-current={tab === "feed" ? "page" : undefined} onClick={(event) => selectTab("feed", event)}>
           <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
             <rect x="2" y="3" width="12" height="10" rx="2" fill="none" stroke="currentColor" strokeWidth="1.6" />
             <path d="M7 6.5 L11 8 L7 9.5 Z" fill="currentColor" />
           </svg>
           Feed
-        </button>
-        <button
-          type="button"
-          aria-pressed={tab === "scores"}
-          onClick={() => {
-            setTab("scores")
-            setChampions((value) => value + 1)
-            window.scrollTo({ top: 0, behavior: scrollBehavior() })
-          }}
-        >
+        </a>
+        <a href="/scores" aria-current={tab === "scores" ? "page" : undefined} onClick={(event) => selectTab("scores", event)}>
           <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
             <rect x="2" y="3" width="12" height="10" rx="1.5" fill="none" stroke="currentColor" strokeWidth="1.6" />
             <path d="M8 3v10M2 8h12" fill="none" stroke="currentColor" strokeWidth="1.6" />
           </svg>
           Scores
-        </button>
-        <button
-          type="button"
-          aria-pressed={tab === "teams"}
-          onClick={() => {
-            setTab("teams")
-            window.scrollTo({ top: 0, behavior: scrollBehavior() })
-          }}
-        >
+        </a>
+        <a href="/teams" aria-current={tab === "teams" ? "page" : undefined} onClick={(event) => selectTab("teams", event)}>
           <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
             <circle cx="5.5" cy="5" r="2" fill="none" stroke="currentColor" strokeWidth="1.6" />
             <circle cx="11" cy="5.5" r="1.5" fill="none" stroke="currentColor" strokeWidth="1.6" />
             <path d="M1.8 13.2c.3-2 1.8-3.2 3.7-3.2s3.4 1.2 3.7 3.2M10 10.2c1.3.2 2.3 1.1 2.7 3" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
           </svg>
           Teams
-        </button>
+        </a>
         </nav>
         <ProfileButton
           pressed={tab === "profile"}
           onOpen={() => {
-            setTab("profile")
+            visit("profile")
             window.scrollTo({ top: 0, behavior: scrollBehavior() })
           }}
         />

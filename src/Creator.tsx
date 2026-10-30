@@ -52,9 +52,19 @@ async function loadClips(signal: AbortSignal): Promise<{ videos: Clip[]; shorts:
 
 export function ProfileButton({ pressed, onOpen }: { pressed: boolean; onOpen: () => void }) {
   return (
-    <button type="button" className="profile-fab" aria-pressed={pressed} aria-label="Jacob Olenick" onClick={onOpen}>
+    <a
+      href="/jacob"
+      className="profile-fab"
+      aria-current={pressed ? "page" : undefined}
+      aria-label="Jacob Olenick"
+      onClick={(event) => {
+        if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return
+        event.preventDefault()
+        onOpen()
+      }}
+    >
       <img src={photo} alt="" />
-    </button>
+    </a>
   )
 }
 
