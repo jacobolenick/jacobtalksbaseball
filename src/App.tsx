@@ -7,6 +7,7 @@ import { ChampionToast } from "./ChampionToast"
 import { FeedView } from "./FeedView"
 import { ProfileButton, ProfileSheet } from "./Creator"
 import { ScoresView } from "./ScoresView"
+import { TeamsView } from "./TeamsView"
 import { Sheet, type SheetRequest } from "./Sheet"
 import { TeamFilter } from "./TeamFilter"
 import type { FilterId, Move } from "./types"
@@ -284,7 +285,7 @@ export default function App() {
   const [openId, setOpenId] = useState<string | null>(null)
   const [pulseId, setPulseId] = useState<string | null>(null)
   const [sheet, setSheet] = useState<SheetRequest | null>(null)
-  const [tab, setTab] = useState<"moves" | "feed" | "scores">("moves")
+  const [tab, setTab] = useState<"moves" | "feed" | "scores" | "teams">("moves")
   const [champions, setChampions] = useState(0)
   const [profileOpen, setProfileOpen] = useState(false)
   const movesRef = useRef<Move[] | null>(null)
@@ -370,8 +371,8 @@ export default function App() {
 
   return (
     <>
-      <a className="skip" href={tab === "feed" ? "#feed" : tab === "scores" ? "#scores" : "#wire"}>
-        Skip to {tab === "feed" ? "feed" : tab === "scores" ? "scores" : "moves"}
+      <a className="skip" href={tab === "moves" ? "#wire" : `#${tab}`}>
+        Skip to {tab}
       </a>
       <Ticker items={tickerItems} loading={moves === null && !error} onOpen={openMove} onHome={home} />
       <main id={tab === "moves" ? undefined : tab}>
@@ -379,6 +380,8 @@ export default function App() {
           <FeedView />
         ) : tab === "scores" ? (
           <ScoresView />
+        ) : tab === "teams" ? (
+          <TeamsView />
         ) : (
           <>
         <div className="head">
@@ -502,6 +505,21 @@ export default function App() {
             <path d="M8 3v10M2 8h12" fill="none" stroke="currentColor" strokeWidth="1.6" />
           </svg>
           Scores
+        </button>
+        <button
+          type="button"
+          aria-pressed={tab === "teams"}
+          onClick={() => {
+            setTab("teams")
+            window.scrollTo({ top: 0, behavior: scrollBehavior() })
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+            <circle cx="5.5" cy="5" r="2" fill="none" stroke="currentColor" strokeWidth="1.6" />
+            <circle cx="11" cy="5.5" r="1.5" fill="none" stroke="currentColor" strokeWidth="1.6" />
+            <path d="M1.8 13.2c.3-2 1.8-3.2 3.7-3.2s3.4 1.2 3.7 3.2M10 10.2c1.3.2 2.3 1.1 2.7 3" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+          </svg>
+          Teams
         </button>
         </nav>
         <ProfileButton onOpen={() => setProfileOpen(true)} />
