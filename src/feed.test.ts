@@ -1,7 +1,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import { baseballClip } from "./channels"
-import { channelEntries, dateFromEtag, datedUploads, mergeUploads, newsFromRss, postedWithin, uploadsFromChannel, videosFromAtom } from "./feed"
+import { channelEntries, dateFromEtag, datedUploads, formatViews, mergeUploads, newsFromRss, postedAgo, postedWithin, uploadsFromChannel, videosFromAtom } from "./feed"
 import { handleApi } from "./server/api"
 
 const news = `
@@ -72,6 +72,59 @@ test("channel videos and shorts become feed entries", () => {
   assert.equal(videos[0]?.id, "c8VkFj_mlGI")
   assert.equal(videos[0]?.title, "Aaron Ashby heroics")
   assert.equal(videos[0]?.published, "2026-10-29T22:53:00.000Z")
+  const counted = channelEntries(
+    {
+      lockupViewModel: {
+        contentId: "food",
+        metadata: {
+          lockupMetadataViewModel: {
+            title: { content: "Food prices" },
+            metadata: {
+              contentMetadataViewModel: {
+                metadataRows: [{ metadataParts: [{ text: { content: "1.6K views" } }, { text: { content: "13 days ago" } }] }],
+              },
+            },
+          },
+        },
+        contentImage: {
+          thumbnailViewModel: {
+            overlays: [
+              { thumbnailBadgeViewModel: { text: "Upcoming" } },
+              { thumbnailBadgeViewModel: { text: "2:40" } },
+            ],
+          },
+        },
+      },
+    },
+    "video",
+    now,
+  )
+  assert.equal(counted[0]?.views, 1600)
+  assert.equal(counted[0]?.length, "2:40")
+  assert.equal(postedAgo(counted[0]?.published ?? "", now), "13 days ago")
+  const premiere = channelEntries(
+    {
+      lockupViewModel: {
+        contentId: "prem",
+        metadata: {
+          lockupMetadataViewModel: {
+            title: { content: "Friday video" },
+            metadata: {
+              contentMetadataViewModel: {
+                metadataRows: [{ metadataParts: [{ text: { content: "Premieres 10/30/26, 6:00 AM" } }] }],
+              },
+            },
+          },
+        },
+      },
+    },
+    "video",
+    now,
+  )
+  assert.equal(premiere[0]?.published, "2026-10-30T10:00:00.000Z")
+  assert.equal(postedAgo(premiere[0]?.published ?? "", now), "Premieres Oct 30")
+  assert.equal(formatViews(446), "446 views")
+  assert.equal(formatViews(1), "1 view")
   const shorts = channelEntries(
     {
       shortsLockupViewModel: {
@@ -84,6 +137,7 @@ test("channel videos and shorts become feed entries", () => {
   )
   assert.equal(shorts[0]?.id, "38fgWxWs__0")
   assert.equal(shorts[0]?.title, "Contreras doubles")
+  assert.equal(shorts[0]?.views, 5500)
 })
 
 test("espn clips stay on baseball and club uploads keep their name", () => {

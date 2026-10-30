@@ -102,7 +102,47 @@ export function videosFromAtom(xml: string, kind: "video" | "short"): FeedItem[]
   return items
 }
 
-export type ChannelEntry = { id: string; title: string; published: string; author?: string }
+export type ChannelEntry = { id: string; title: string; published: string; author?: string; views?: number; length?: string }
+
+export function parseViewCount(text: string): number | null {
+  const match = /([\d,.]+)\s*(thousand|million|billion|[kmb])?\s*views/i.exec(text)
+  if (!match) return null
+  const amount = Number(match[1]?.replace(/,/g, ""))
+  if (!Number.isFinite(amount)) return null
+  const unit = (match[2] ?? "").toLowerCase()
+  const scale =
+    unit === "k" || unit === "thousand" ? 1_000 : unit === "m" || unit === "million" ? 1_000_000 : unit === "b" || unit === "billion" ? 1_000_000_000 : 1
+  return Math.round(amount * scale)
+}
+
+export function formatViews(count: number): string {
+  const views = Math.max(0, Math.round(count))
+  const compact = (value: number) => {
+    const rounded = Math.round(value * 10) / 10
+    return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1)
+  }
+  if (views >= 1_000_000_000) return `${compact(views / 1_000_000_000)}B views`
+  if (views >= 1_000_000) return `${compact(views / 1_000_000)}M views`
+  if (views >= 1_000) return `${compact(views / 1_000)}K views`
+  return `${views.toLocaleString("en-US")} ${views === 1 ? "view" : "views"}`
+}
+
+export function postedAgo(published: string, now = Date.now()): string {
+  const stamp = Date.parse(published)
+  if (!Number.isFinite(stamp)) return ""
+  if (stamp > now) {
+    const when = new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "numeric",
+      timeZone: "America/New_York",
+    }).format(new Date(stamp))
+    return `Premieres ${when}`
+  }
+  const days = Math.floor((now - stamp) / 86_400_000)
+  if (days <= 0) return "Today"
+  if (days === 1) return "1 day ago"
+  return `${days} days ago`
+}
 
 function asRecord(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null
@@ -123,6 +163,69 @@ function publishedFromAgo(text: string, now: number): string {
   }
   const ms = unit ? span[unit] : 0
   return new Date(now - amount * ms).toISOString()
+}
+
+function textContents(value: unknown): string[] {
+  const found: string[] = []
+  const walk = (node: unknown) => {
+    if (Array.isArray(node)) {
+      node.forEach(walk)
+      return
+    }
+    const record = asRecord(node)
+    if (!record) return
+    if (typeof record.content === "string") found.push(record.content)
+    Object.values(record).forEach(walk)
+  }
+  walk(value)
+  return found
+}
+
+function easternToIso(year: number, month: number, day: number, hour: number, minute: number): string {
+  const guess = Date.UTC(year, month - 1, day, hour, minute)
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(new Date(guess))
+  const pick = (type: string) => Number(parts.find((part) => part.type === type)?.value)
+  const rendered = Date.UTC(pick("year"), pick("month") - 1, pick("day"), pick("hour") % 24, pick("minute"))
+  return new Date(guess - (rendered - guess)).toISOString()
+}
+
+function publishedFromPremiere(text: string): string | null {
+  const cleaned = text.replace(/[\u202f\u00a0]/g, " ")
+  const match = /Premieres\s+(\d{1,2})\/(\d{1,2})\/(\d{2,4})(?:,\s*(\d{1,2}):(\d{2})\s*([AP]M))?/i.exec(cleaned)
+  if (!match) return null
+  let year = Number(match[3])
+  if (year < 100) year += 2000
+  let hour = Number(match[4] ?? 0)
+  const minute = Number(match[5] ?? 0)
+  const meridiem = match[6]?.toUpperCase()
+  if (meridiem === "PM" && hour < 12) hour += 12
+  if (meridiem === "AM" && hour === 12) hour = 0
+  return easternToIso(year, Number(match[1]), Number(match[2]), hour, minute)
+}
+
+function videoLength(card: Record<string, unknown> | null): string | null {
+  const found: string[] = []
+  const walk = (node: unknown) => {
+    if (Array.isArray(node)) {
+      node.forEach(walk)
+      return
+    }
+    const record = asRecord(node)
+    if (!record) return
+    const badge = asRecord(record.thumbnailBadgeViewModel)
+    if (typeof badge?.text === "string") found.push(badge.text)
+    Object.values(record).forEach(walk)
+  }
+  walk(asRecord(asRecord(card?.contentImage)?.thumbnailViewModel)?.overlays)
+  return found.find((value) => /^\d{1,2}:\d{2}(:\d{2})?$/.test(value)) ?? null
 }
 
 function agoText(value: unknown): string {
@@ -152,15 +255,23 @@ export function channelEntries(data: unknown, kind: "video" | "short", now = Dat
     if (!record) return
     if (kind === "video") {
       const card = asRecord(record.lockupViewModel)
+      const viewModel = asRecord(asRecord(card?.metadata)?.lockupMetadataViewModel)
       const id = typeof card?.contentId === "string" ? card.contentId : ""
-      const title = asRecord(asRecord(asRecord(card?.metadata)?.lockupMetadataViewModel)?.title)?.content
+      const title = asRecord(viewModel?.title)?.content
       if (id && typeof title === "string" && !seen.has(id)) {
         seen.add(id)
-        const ago = agoText(card)
+        const parts = textContents(viewModel?.metadata)
+        const ago = parts.find((text) => /(\d+)\s+(minute|hour|day|week|month|year)/i.test(text)) ?? agoText(card)
+        const premiere = parts.find((text) => /^premieres\b/i.test(text))
+        const views = parseViewCount(parts.find((text) => /views/i.test(text)) ?? "")
+        const length = videoLength(card)
+        const scheduled = !ago && premiere ? publishedFromPremiere(premiere) : null
         entries.push({
           id,
           title,
-          published: ago ? publishedFromAgo(ago, now) : new Date(now - entries.length * 60_000).toISOString(),
+          published: ago ? publishedFromAgo(ago, now) : scheduled ?? new Date(now - entries.length * 60_000).toISOString(),
+          ...(views === null ? {} : { views }),
+          ...(length ? { length } : {}),
         })
       }
     }
@@ -169,10 +280,16 @@ export function channelEntries(data: unknown, kind: "video" | "short", now = Dat
       const endpoint = asRecord(asRecord(asRecord(asRecord(card?.onTap)?.innertubeCommand)?.reelWatchEndpoint))
       const id = typeof endpoint?.videoId === "string" ? endpoint.videoId : ""
       const raw = typeof card?.accessibilityText === "string" ? card.accessibilityText : ""
-      const title = raw.replace(/,\s*[\d.]+\s*(thousand|million)?\s*views.*$/i, "").trim()
+      const title = raw.replace(/,\s*[\d.]+\s*(thousand|million|billion|[kmb])?\s*views.*$/i, "").trim()
       if (id && title && !seen.has(id)) {
         seen.add(id)
-        entries.push({ id, title, published: new Date(now - entries.length * 60_000).toISOString() })
+        const views = parseViewCount(raw)
+        entries.push({
+          id,
+          title,
+          published: new Date(now - entries.length * 60_000).toISOString(),
+          ...(views === null ? {} : { views }),
+        })
       }
     }
     Object.values(record).forEach(walk)

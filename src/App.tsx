@@ -5,7 +5,7 @@ import { headshot, teamLogo } from "./teams"
 import logo from "./assets/logo.png"
 import { ChampionToast } from "./ChampionToast"
 import { FeedView } from "./FeedView"
-import { ProfileButton, ProfileSheet } from "./Creator"
+import { ProfileButton, ProfilePage } from "./Creator"
 import { ScoresView } from "./ScoresView"
 import { TeamsView } from "./TeamsView"
 import { Sheet, type SheetRequest } from "./Sheet"
@@ -285,9 +285,8 @@ export default function App() {
   const [openId, setOpenId] = useState<string | null>(null)
   const [pulseId, setPulseId] = useState<string | null>(null)
   const [sheet, setSheet] = useState<SheetRequest | null>(null)
-  const [tab, setTab] = useState<"moves" | "feed" | "scores" | "teams">("moves")
+  const [tab, setTab] = useState<"moves" | "feed" | "scores" | "teams" | "profile">("moves")
   const [champions, setChampions] = useState(0)
-  const [profileOpen, setProfileOpen] = useState(false)
   const movesRef = useRef<Move[] | null>(null)
   const abortRef = useRef<AbortController | null>(null)
   const today = todayISO()
@@ -382,6 +381,8 @@ export default function App() {
           <ScoresView />
         ) : tab === "teams" ? (
           <TeamsView />
+        ) : tab === "profile" ? (
+          <ProfilePage />
         ) : (
           <>
         <div className="head">
@@ -522,10 +523,15 @@ export default function App() {
           Teams
         </button>
         </nav>
-        <ProfileButton onOpen={() => setProfileOpen(true)} />
+        <ProfileButton
+          pressed={tab === "profile"}
+          onOpen={() => {
+            setTab("profile")
+            window.scrollTo({ top: 0, behavior: scrollBehavior() })
+          }}
+        />
       </div>
       {champions > 0 ? <ChampionToast key={champions} onDone={() => setChampions(0)} /> : null}
-      {profileOpen ? <ProfileSheet onClose={() => setProfileOpen(false)} /> : null}
       {sheet ? (
         <Sheet
           request={sheet}

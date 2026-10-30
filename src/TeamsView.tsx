@@ -151,7 +151,7 @@ function ClubPage({ id, honors, onBack }: { id: number; honors: Honors | null; o
               <p className="roster-label">{group.label}</p>
               <div className="card">
                 {group.players.map((player) => (
-                  <div className="player" key={player.id}>
+                  <div className="roster-row" key={player.id}>
                     <img src={headshot(player.id)} alt="" width={44} height={44} />
                     <span className="name">{player.name}</span>
                     <span className="player-meta">

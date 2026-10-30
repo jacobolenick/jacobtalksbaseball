@@ -1,6 +1,6 @@
 import { allowedArticleUrl, briefFromHtml, sourceName } from "../brief"
 import { VIDEO_CHANNELS } from "../channels"
-import { atomFromEntries, channelEntries, dateFromEtag, datedUploads, mergeUploads, postedWithin, uploadsFromChannel } from "../feed"
+import { atomFromEntries, channelEntries, dateFromEtag, datedUploads, mergeUploads, postedWithin, uploadsFromChannel, type ChannelEntry } from "../feed"
 import { videosFromYouTube } from "../scores"
 
 export type ApiResult = {
@@ -98,6 +98,50 @@ async function youtubeFeed(kind: "video" | "short"): Promise<string | null> {
   return xml
 }
 
+const JACOB_CHANNEL = "UCNdzT3Xk9gRy613TC5wP6Kw"
+
+async function browseChannel(channelId: string, kind: "video" | "short"): Promise<ChannelEntry[] | null> {
+  const params = kind === "short" ? "EgZzaG9ydHPyBgUKA5oBAA==" : "EgZ2aWRlb3PyBgQKAjoA"
+  try {
+    const response = await fetch("https://www.youtube.com/youtubei/v1/browse?prettyPrint=false", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "User-Agent": UA },
+      body: JSON.stringify({ context: { client: youtubeClient }, browseId: channelId, params }),
+      signal: AbortSignal.timeout(6000),
+    })
+    if (!response.ok) return null
+    return channelEntries(await response.json(), kind, Date.now())
+  } catch {
+    return null
+  }
+}
+
+function newest(entries: ChannelEntry[]): { id: string; title: string; published: string; views: number | null; length: string | null }[] {
+  return [...entries]
+    .sort((a, b) => b.published.localeCompare(a.published))
+    .slice(0, 30)
+    .map((entry) => ({
+      id: entry.id,
+      title: entry.title,
+      published: entry.published,
+      views: entry.views ?? null,
+      length: entry.length ?? null,
+    }))
+}
+
+async function jacobFeed(): Promise<string | null> {
+  const cached = feedCache.get("jacob")
+  if (cached && Date.now() - cached.at < 30 * 1000) return cached.xml
+  const [videos, shorts] = await Promise.all([
+    browseChannel(JACOB_CHANNEL, "video"),
+    browseChannel(JACOB_CHANNEL, "short"),
+  ])
+  if (!videos && !shorts) return null
+  const body = JSON.stringify({ videos: newest(videos ?? []), shorts: newest(shorts ?? []) })
+  feedCache.set("jacob", { at: Date.now(), xml: body })
+  return body
+}
+
 export async function handleApi(rawUrl: string, options?: { cache?: boolean }): Promise<ApiResult | null> {
   const cache = options?.cache ?? false
   const path = rawUrl.split("?")[0]
@@ -107,6 +151,23 @@ export async function handleApi(rawUrl: string, options?: { cache?: boolean }): 
       const xml = await youtubeFeed(kind)
       if (xml === null) return reply(502, "text/plain; charset=utf-8", "Feed unavailable", cache)
       return reply(200, "application/xml; charset=utf-8", xml, cache)
+    } catch {
+      return reply(502, "text/plain; charset=utf-8", "Feed unavailable", cache)
+    }
+  }
+  if (path === "/api/feed/jacob") {
+    try {
+      const body = await jacobFeed()
+      if (body === null) return reply(502, "text/plain; charset=utf-8", "Feed unavailable", cache)
+      return {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json; charset=utf-8",
+          "Cache-Control": "public, max-age=30",
+          "Netlify-CDN-Cache-Control": "public, s-maxage=30, stale-while-revalidate=30",
+        },
+        body,
+      }
     } catch {
       return reply(502, "text/plain; charset=utf-8", "Feed unavailable", cache)
     }
