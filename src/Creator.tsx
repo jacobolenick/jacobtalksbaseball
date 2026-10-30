@@ -11,6 +11,7 @@ const LINKS = [
   { name: "Instagram", href: "https://www.instagram.com/jacobtalksbaseball/" },
   { name: "TikTok", href: "https://www.tiktok.com/@jacobtalksbaseball" },
   { name: "YouTube", href: "https://www.youtube.com/@jacobtalks-baseball" },
+  { name: "X", href: "https://x.com/jtalksbaseball" },
   { name: "Facebook", href: "https://www.facebook.com/profile.php?id=61595596657892" },
 ]
 
