@@ -58,16 +58,19 @@ export function ProfileButton({ pressed, onOpen }: { pressed: boolean; onOpen: (
   )
 }
 
-function People({ people, detail }: { people: { id: number; name: string }[]; detail?: string }) {
+function People({ people, detail }: { people: { id: number; name: string; team?: string }[]; detail?: string }) {
   return (
     <div className="card">
-      {people.map((person) => (
-        <div className="roster-row" key={person.id}>
-          <img src={headshot(person.id)} alt="" width={44} height={44} />
-          <span className="name">{person.name}</span>
-          {detail ? <span className="player-meta">{detail}</span> : null}
-        </div>
-      ))}
+      {people.map((person) => {
+        const team = person.team ?? detail
+        return (
+          <div className="roster-row" key={person.id}>
+            <img src={headshot(person.id)} alt="" width={44} height={44} />
+            <span className="name">{person.name}</span>
+            {team ? <span className="player-meta">{team}</span> : null}
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -253,7 +256,7 @@ export function ProfilePage() {
 
       <section className="group">
         <h2>Favorite players</h2>
-        <People people={FAVORITE_PLAYERS} detail="A's" />
+        <People people={FAVORITE_PLAYERS} />
       </section>
 
       <section className="group">

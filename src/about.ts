@@ -38,8 +38,10 @@ export const BONUS_PARKS = [
 ]
 
 export const FAVORITE_PLAYERS = [
-  { id: 701762, name: "Nick Kurtz" },
-  { id: 805779, name: "Jacob Wilson" },
+  { id: 701762, name: "Nick Kurtz", team: "A's" },
+  { id: 805779, name: "Jacob Wilson", team: "A's" },
+  { id: 691718, name: "Pete Crow-Armstrong", team: "Cubs" },
+  { id: 592450, name: "Aaron Judge", team: "Yankees" },
 ]
 
 export const GREW_UP = [
