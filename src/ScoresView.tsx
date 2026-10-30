@@ -275,7 +275,7 @@ export function ScoresView() {
                   <button
                     key={game.id}
                     type="button"
-                    className="score-row"
+                    className={selected?.id === game.id ? "score-row selected" : "score-row"}
                     onClick={() => setSelected(game)}
                     aria-label={`${game.awayName} ${game.awayScore}, ${game.homeName} ${game.homeScore}${series ? `, ${series}` : ""}`}
                   >
