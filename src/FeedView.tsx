@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { feedWhen, loadFeed, type FeedItem, type FeedKind } from "./feed"
+import { feedLede, type LeagueId } from "./league"
+import { loadWorldFeed } from "./world"
 import { YouTubeFrame } from "./YouTube"
 
 const FILTERS: { id: "all" | FeedKind; label: string }[] = [
@@ -153,7 +155,7 @@ function Player({ item, onClose }: { item: FeedItem; onClose: () => void }) {
   )
 }
 
-export function FeedView() {
+export function FeedView({ league = "mlb" }: { league?: LeagueId }) {
   const [items, setItems] = useState<FeedItem[] | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [filter, setFilter] = useState<(typeof FILTERS)[number]["id"]>("all")
@@ -164,7 +166,8 @@ export function FeedView() {
   useEffect(() => {
     const controller = new AbortController()
     setError(null)
-    loadFeed(controller.signal)
+    const request = league === "mlb" ? loadFeed(controller.signal) : loadWorldFeed(league, controller.signal)
+    request
       .then((next) => {
         if (!controller.signal.aborted) setItems(next)
       })
@@ -173,7 +176,7 @@ export function FeedView() {
         if (!controller.signal.aborted) setError("The feed didn’t load.")
       })
     return () => controller.abort()
-  }, [attempt])
+  }, [attempt, league])
 
   const shorts = (items ?? []).filter((item) => item.kind === "short")
   const stories = (items ?? []).filter((item) => item.kind !== "short")
@@ -190,7 +193,7 @@ export function FeedView() {
       <div className="head">
         <h1>Feed</h1>
       </div>
-      <p className="lede">News from MLB.com. Video and shorts from MLB, ESPN, and the clubs.</p>
+      <p className="lede">{feedLede(league)}</p>
       <div className="segments feed-segments" role="group" aria-label="Filter the feed">
         {FILTERS.map((item) => (
           <button

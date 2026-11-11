@@ -1,4 +1,5 @@
 import { allowedArticleUrl, briefFromHtml, sourceName } from "../brief"
+import { handleWorld } from "./world"
 import { VIDEO_CHANNELS } from "../channels"
 import { atomFromEntries, channelEntries, dateFromEtag, datedUploads, mergeUploads, postedWithin, uploadsFromChannel, type ChannelEntry } from "../feed"
 import { videosFromYouTube } from "../scores"
@@ -144,6 +145,8 @@ async function jacobFeed(): Promise<string | null> {
 
 export async function handleApi(rawUrl: string, options?: { cache?: boolean }): Promise<ApiResult | null> {
   const cache = options?.cache ?? false
+  const world = await handleWorld(rawUrl, cache)
+  if (world) return world
   const path = rawUrl.split("?")[0]
   if (path === "/api/feed/videos" || path === "/api/feed/shorts") {
     const kind = path.endsWith("shorts") ? "short" : "video"

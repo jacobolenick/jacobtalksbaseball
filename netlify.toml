@@ -10,7 +10,7 @@
   node_bundler = "esbuild"
 
 [functions.api]
-  timeout = 10
+  timeout = 26
 
 # These pages are the app. /api stays on the function because this list does not include it.
 [[redirects]]
@@ -60,5 +60,35 @@
 
 [[redirects]]
   from = "/jacob/"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/npb"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/npb/*"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/lmb"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/lmb/*"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/lidom"
+  to = "/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/lidom/*"
   to = "/index.html"
   status = 200

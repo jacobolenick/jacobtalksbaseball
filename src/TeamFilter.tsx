@@ -3,6 +3,8 @@ import { CLUBS, clubById, mlbLogo, teamLogo } from "./teams"
 
 const TEAMS = [...CLUBS].sort((a, b) => a.nick.localeCompare(b.nick, "en"))
 
+type FilterClub = { id: number; nick: string; logo: string }
+
 function TeamMark({ id, src }: { id?: number; src?: string }) {
   const [failed, setFailed] = useState(false)
   const url = src ?? (id ? teamLogo(id) : undefined)
@@ -13,14 +15,17 @@ function TeamMark({ id, src }: { id?: number; src?: string }) {
 export function TeamFilter({
   teamId,
   onChange,
+  clubs,
 }: {
   teamId: number | null
   onChange: (id: number | null) => void
+  clubs?: FilterClub[]
 }) {
   const [open, setOpen] = useState(false)
   const root = useRef<HTMLDivElement>(null)
   const trigger = useRef<HTMLButtonElement>(null)
-  const club = clubById(teamId ?? undefined)
+  const teams = clubs ? [...clubs].sort((a, b) => a.nick.localeCompare(b.nick, "en")) : TEAMS
+  const club = teams.find((item) => item.id === teamId) ?? (clubs ? undefined : clubById(teamId ?? undefined))
 
   useEffect(() => {
     if (!open) return
@@ -68,7 +73,7 @@ export function TeamFilter({
         aria-label={`Team, ${club?.nick ?? "All teams"}`}
         onClick={() => setOpen((value) => !value)}
       >
-        {club ? <TeamMark id={club.id} /> : <TeamMark src={mlbLogo} />}
+        {club ? <TeamMark id={clubs ? undefined : club.id} src={"logo" in club ? club.logo : undefined} /> : <TeamMark src={clubs ? undefined : mlbLogo} />}
         <span>{club?.nick ?? "All teams"}</span>
         <svg width="10" height="6" viewBox="0 0 10 6" aria-hidden="true">
           <path d="M1 1 L5 5 L9 1" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
@@ -78,14 +83,14 @@ export function TeamFilter({
         <ul className="team-menu" role="listbox" aria-label="Teams">
           <li>
             <button type="button" role="option" aria-selected={teamId === null} onClick={() => choose(null)}>
-              <TeamMark src={mlbLogo} />
+              <TeamMark src={clubs ? undefined : mlbLogo} />
               All teams
             </button>
           </li>
-          {TEAMS.map((item) => (
+          {teams.map((item) => (
             <li key={item.id}>
               <button type="button" role="option" aria-selected={teamId === item.id} onClick={() => choose(item.id)}>
-                <TeamMark id={item.id} />
+                <TeamMark id={clubs ? undefined : item.id} src={"logo" in item ? item.logo : undefined} />
                 {item.nick}
               </button>
             </li>

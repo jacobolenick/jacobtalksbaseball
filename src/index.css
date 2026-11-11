@@ -88,6 +88,84 @@ button { color: inherit; }
 
 .ticker-scroller::-webkit-scrollbar { display: none; }
 
+.league-switch {
+  position: relative;
+  display: flex;
+  flex: none;
+  align-items: center;
+  padding: 0 12px 0 4px;
+}
+
+.league-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 11px;
+  background: var(--track);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+}
+
+.league-trigger svg { color: var(--secondary); }
+
+.league-mark {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  flex: none;
+}
+
+.league-mark.fallback {
+  display: inline-grid;
+  place-items: center;
+  border-radius: 4px;
+  background: #e8e8ed;
+  color: var(--secondary);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.league-list .league-mark {
+  width: 22px;
+  height: 22px;
+}
+
+.league-switch .league-list {
+  right: 0;
+  left: auto;
+  width: 260px;
+}
+
+.league-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.league-copy small {
+  color: var(--secondary);
+  font-size: 12px;
+  font-weight: 450;
+}
+
+.logo-fallback {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  border-radius: 50%;
+  background: #e8e8ed;
+  color: var(--secondary);
+  font-weight: 650;
+  line-height: 1;
+}
+
 .track {
   display: flex;
   align-items: stretch;
@@ -883,6 +961,8 @@ button.story { cursor: pointer; }
 
 @media (max-width: 700px) {
   .ticker { height: 72px; }
+  .league-switch { padding-right: 8px; }
+  .league-trigger { min-height: 30px; padding: 0 8px; }
   .brand { padding: 6px 8px 6px 10px; }
   .brand img { height: 60px; }
   h1 { font-size: 32px; }

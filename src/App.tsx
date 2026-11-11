@@ -5,10 +5,14 @@ import { headshot, teamLogo } from "./teams"
 import logo from "./assets/logo.png"
 import { ChampionToast } from "./ChampionToast"
 import { FeedView } from "./FeedView"
+import { LeagueMenu } from "./LeagueMenu"
+import { placePath, readPlace, type LeagueId } from "./league"
 import { ProfileButton, ProfilePage } from "./Creator"
 import { ScoresView } from "./ScoresView"
 import { TeamsView } from "./TeamsView"
-import { pathForTab, tabFromPath, type PageTab } from "./paths"
+import { WorldScores } from "./WorldScores"
+import { WorldTeams } from "./WorldTeams"
+import type { PageTab } from "./paths"
 import { Sheet, type SheetRequest } from "./Sheet"
 import { TeamFilter } from "./TeamFilter"
 import type { FilterId, Move } from "./types"
@@ -108,13 +112,17 @@ function Pills({ items, onOpen }: { items: Move[]; onOpen: (id: string) => void 
 function Ticker({
   items,
   loading,
+  league,
   onOpen,
   onHome,
+  onLeague,
 }: {
   items: Move[] | null
   loading: boolean
+  league: LeagueId
   onOpen: (id: string) => void
   onHome: () => void
+  onLeague: (league: LeagueId) => void
 }) {
   const scroller = useRef<HTMLDivElement>(null)
   const track = useRef<HTMLDivElement>(null)
@@ -223,6 +231,7 @@ function Ticker({
           </>
         )}
       </div>
+      <LeagueMenu league={league} onChange={onLeague} />
     </header>
   )
 }
@@ -286,7 +295,8 @@ export default function App() {
   const [openId, setOpenId] = useState<string | null>(null)
   const [pulseId, setPulseId] = useState<string | null>(null)
   const [sheet, setSheet] = useState<SheetRequest | null>(null)
-  const [tab, setTab] = useState<PageTab>(() => tabFromPath(window.location.pathname))
+  const [place, setPlace] = useState(() => readPlace(window.location.pathname))
+  const { league, tab } = place
   const [champions, setChampions] = useState(0)
   const movesRef = useRef<Move[] | null>(null)
   const abortRef = useRef<AbortController | null>(null)
@@ -352,43 +362,51 @@ export default function App() {
   }
 
   useEffect(() => {
-    const next = tabFromPath(window.location.pathname)
-    const path = pathForTab(next)
-    if (window.location.pathname !== path) history.replaceState({ tab: next }, "", path)
-    if (next === "scores") setChampions((value) => value + 1)
+    const current = readPlace(window.location.pathname)
+    const path = placePath(current.league, current.tab)
+    if (window.location.pathname !== path) history.replaceState({ league: current.league, tab: current.tab }, "", path)
+    if (current.league === "mlb" && current.tab === "scores") setChampions((value) => value + 1)
     const onPop = () => {
-      const page = tabFromPath(window.location.pathname)
-      setTab(page)
-      if (page === "scores") setChampions((value) => value + 1)
+      const page = readPlace(window.location.pathname)
+      setPlace(page)
+      if (page.league === "mlb" && page.tab === "scores") setChampions((value) => value + 1)
       window.scrollTo({ top: 0, behavior: scrollBehavior() })
     }
     window.addEventListener("popstate", onPop)
     return () => window.removeEventListener("popstate", onPop)
   }, [])
 
-  function visit(next: PageTab) {
-    const path = pathForTab(next)
-    if (window.location.pathname !== path) history.pushState({ tab: next }, "", path)
-    setTab(next)
+  function visit(next: PageTab, nextLeague: LeagueId = league) {
+    const target: LeagueId = next === "profile" ? "mlb" : nextLeague
+    const path = placePath(target, next)
+    if (window.location.pathname !== path) history.pushState({ league: target, tab: next }, "", path)
+    setPlace({ league: target, tab: next })
+    if (target === "mlb" && next === "scores") setChampions((value) => value + 1)
+    if (!(target === "mlb" && next === "moves")) window.scrollTo({ top: 0, behavior: scrollBehavior() })
   }
 
   function selectTab(next: PageTab, event: { metaKey: boolean; ctrlKey: boolean; shiftKey: boolean; altKey: boolean; button: number; preventDefault: () => void }) {
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return
     event.preventDefault()
     visit(next)
-    if (next === "scores") setChampions((value) => value + 1)
-    if (next !== "moves") window.scrollTo({ top: 0, behavior: scrollBehavior() })
+  }
+
+  function selectLeague(next: LeagueId) {
+    if (next === league) return
+    const keep = tab === "feed" || tab === "scores" || tab === "teams"
+    if (next === "mlb") visit(keep ? tab : "moves", "mlb")
+    else visit(keep ? tab : "scores", next)
   }
 
   function home() {
-    setFilter("all")
+    if (league === "mlb") setFilter("all")
     window.scrollTo({ top: 0, behavior: scrollBehavior() })
   }
 
   const closeSheet = useCallback(() => setSheet(null), [])
 
   function openMove(id: string) {
-    visit("moves")
+    visit("moves", "mlb")
     setOpenId(id)
     setPulseId(id)
     requestAnimationFrame(() => {
@@ -403,10 +421,14 @@ export default function App() {
       <a className="skip" href={tab === "moves" ? "#wire" : `#${tab}`}>
         Skip to {tab}
       </a>
-      <Ticker items={tickerItems} loading={moves === null && !error} onOpen={openMove} onHome={home} />
+      <Ticker items={tickerItems} loading={moves === null && !error} league={league} onOpen={openMove} onHome={home} onLeague={selectLeague} />
       <main id={tab === "moves" ? undefined : tab}>
         {tab === "feed" ? (
-          <FeedView />
+          <FeedView key={league} league={league} />
+        ) : league !== "mlb" && tab === "scores" ? (
+          <WorldScores key={league} league={league} />
+        ) : league !== "mlb" && tab === "teams" ? (
+          <WorldTeams key={league} league={league} />
         ) : tab === "scores" ? (
           <ScoresView />
         ) : tab === "teams" ? (
@@ -502,27 +524,29 @@ export default function App() {
       </main>
       <div className="dock-row">
         <nav className="dock" aria-label="Sections">
+        {league === "mlb" ? (
         <a href="/mlbmoves" aria-current={tab === "moves" ? "page" : undefined} onClick={(event) => selectTab("moves", event)}>
           <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
             <path d="M2 4.5h12M2 8h12M2 11.5h8" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
           </svg>
           Moves
         </a>
-        <a href="/newsfeed" aria-current={tab === "feed" ? "page" : undefined} onClick={(event) => selectTab("feed", event)}>
+        ) : null}
+        <a href={placePath(league, "feed")} aria-current={tab === "feed" ? "page" : undefined} onClick={(event) => selectTab("feed", event)}>
           <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
             <rect x="2" y="3" width="12" height="10" rx="2" fill="none" stroke="currentColor" strokeWidth="1.6" />
             <path d="M7 6.5 L11 8 L7 9.5 Z" fill="currentColor" />
           </svg>
           Feed
         </a>
-        <a href="/scores" aria-current={tab === "scores" ? "page" : undefined} onClick={(event) => selectTab("scores", event)}>
+        <a href={placePath(league, "scores")} aria-current={tab === "scores" ? "page" : undefined} onClick={(event) => selectTab("scores", event)}>
           <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
             <rect x="2" y="3" width="12" height="10" rx="1.5" fill="none" stroke="currentColor" strokeWidth="1.6" />
             <path d="M8 3v10M2 8h12" fill="none" stroke="currentColor" strokeWidth="1.6" />
           </svg>
           Scores
         </a>
-        <a href="/teams" aria-current={tab === "teams" ? "page" : undefined} onClick={(event) => selectTab("teams", event)}>
+        <a href={placePath(league, "teams")} aria-current={tab === "teams" ? "page" : undefined} onClick={(event) => selectTab("teams", event)}>
           <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
             <circle cx="5.5" cy="5" r="2" fill="none" stroke="currentColor" strokeWidth="1.6" />
             <circle cx="11" cy="5.5" r="1.5" fill="none" stroke="currentColor" strokeWidth="1.6" />
@@ -539,7 +563,7 @@ export default function App() {
           }}
         />
       </div>
-      {champions > 0 ? <ChampionToast key={champions} onDone={() => setChampions(0)} /> : null}
+      {league === "mlb" && champions > 0 ? <ChampionToast key={champions} onDone={() => setChampions(0)} /> : null}
       {sheet ? (
         <Sheet
           request={sheet}
